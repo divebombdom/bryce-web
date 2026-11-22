@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bryce Web — a landscape studio after Bryce 3D (1994)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&family=Saira:ital,wght@1,600;1,800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./css/style.css" />
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <aside class="left">
+    <div class="brand" data-hint="Bryce Web — fractal landscapes, ray traced in your browser">
+      <span class="brand-mark">Bryce</span><span class="brand-sub">web&nbsp;·&nbsp;after 1994</span>
+    </div>
+
+    <div class="nano-wrap">
+      <canvas id="nano" width="200" height="140" data-hint="Nano-Preview: a tiny live rendering of your scene. Click to refresh."></canvas>
+      <div class="nano-bar">
+        <span class="nano-label">Nano-Preview</span>
+        <button class="flippy" id="nanoMenuBtn" data-hint="Nano-Preview options" aria-label="Nano-Preview options">▾</button>
+      </div>
+      <div class="dropdown" id="nanoMenu" hidden>
+        <label><input type="checkbox" id="nanoAuto" checked> Auto-Update</label>
+        <label><input type="radio" name="nanoMode" value="full" checked> Full Scene</label>
+        <label><input type="radio" name="nanoMode" value="sky"> Sky Only</label>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-title">View</div>
+      <div class="seg" id="views">
+        <button data-view="camera" class="on" data-hint="Camera view — what will be rendered">Cam</button>
+        <button data-view="top" data-hint="Top view">Top</button>
+        <button data-view="front" data-hint="Front view">Front</button>
+        <button data-view="side" data-hint="Side view">Side</button>
+      </div>
+      <div class="nav-row">
+        <div class="trackball" id="trackball" data-hint="Camera trackball: drag to orbit the camera around the scene">
+          <svg viewBox="0 0 80 80"><defs><radialGradient id="tb" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#8d8a84"/><stop offset="1" stop-color="#1e1d1b"/></radialGradient></defs>
+            <circle cx="40" cy="40" r="36" fill="url(#tb)" stroke="#111"/>
+            <g fill="none" stroke="#f2a541" stroke-opacity=".45"><ellipse cx="40" cy="40" rx="36" ry="12"/><ellipse cx="40" cy="40" rx="12" ry="36"/><ellipse cx="40" cy="40" rx="26" ry="36"/><ellipse cx="40" cy="40" rx="36" ry="26"/></g>
+            <circle cx="28" cy="25" r="7" fill="#fff" opacity=".12"/></svg>
+        </div>
+        <div class="navpad">
+          <div class="cross" id="cross" data-hint="Cross control: drag to slide the camera across the ground (X/Z)">
+            <svg viewBox="0 0 60 60"><g fill="#d9d2c4"><polygon points="30,4 37,14 23,14"/><polygon points="30,56 37,46 23,46"/><polygon points="4,30 14,23 14,37"/><polygon points="56,30 46,23 46,37"/></g><circle cx="30" cy="30" r="9" fill="#24231f" stroke="#5e5a53"/></svg>
+          </div>
+          <div class="zoom">
+            <button id="zoomIn" data-hint="Zoom in (hold)" aria-label="Zoom in">+</button>
+            <button id="zoomOut" data-hint="Zoom out (hold)" aria-label="Zoom out">−</button>
+          </div>
+        </div>
+      </div>
+      <div class="memory">
+        <span class="mini-label">Memory</span>
+        <div class="dots" id="camDots"></div>
+      </div>
+      <div class="scrub-host" id="fovHost"></div>
+    </div>
+
+    <div class="block render-block">
+      <button class="render-btn" id="renderBtn" data-hint="Render the Camera view (Ctrl+R)" aria-label="Render">
+        <span class="orb"></span><span class="render-label">Render</span>
+      </button>
+      <div class="render-meta">
+        <div class="progress"><div class="bar" id="progBar"></div></div>
+        <div class="render-status" id="renderStatus">Ready</div>
+      </div>
+      <div class="render-opts">
+        <label data-hint="Antialias: extra jittered passes for smooth edges"><input type="checkbox" id="aaOn" checked> Antialias</label>
+        <label data-hint="Render size relative to the working window">Size
+          <select id="renderScale"><option value="0.5">Draft</option><option value="1" selected>Normal</option><option value="2">Fine</option></select></label>
+        <label data-hint="Keep the last render behind the wireframe while editing"><input type="checkbox" id="plop" checked> Keep render behind wireframe</label>
+      </div>
+      <div class="row2">
+        <button class="btn" id="stopBtn" data-hint="Stop rendering">Stop</button>
+        <button class="btn" id="saveImgBtn" data-hint="Save the finished render as PNG">Save image</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="center">
+    <header class="top">
+      <div class="menus">
+        <div class="menu">
+          <button class="menu-btn" data-hint="File: new, examples, open and save">File ▾</button>
+          <div class="dropdown menu-list" hidden>
+            <button data-act="new">New empty world</button>
+            <div class="sep"></div>
+            <div class="menu-head">Example scenes</div>
+            <div id="exampleList"></div>
+            <div class="sep"></div>
+            <button data-act="open">Open scene (.json)…</button>
+            <button data-act="save">Save scene (.json)</button>
+            <button data-act="saveimg">Save render (.png)</button>
+          </div>
+        </div>
+        <div class="menu">
+          <button class="menu-btn" data-hint="Edit: undo, redo, duplicate, delete">Edit ▾</button>
+          <div class="dropdown menu-list" hidden>
+            <button data-act="undo">Undo <kbd>Ctrl Z</kbd></button>
+            <button data-act="redo">Redo <kbd>Ctrl ⇧ Z</kbd></button>
+            <div class="sep"></div>
+            <button data-act="duplicate">Duplicate <kbd>Ctrl D</kbd></button>
+            <button data-act="delete">Delete <kbd>Del</kbd></button>
+            <button data-act="deselect">Deselect <kbd>Esc</kbd></button>
+          </div>
+        </div>
+        <div class="menu">
+          <button class="menu-btn" data-hint="Help and keyboard shortcuts">Help ▾</button>
+          <div class="dropdown menu-list" hidden>
+            <button data-act="help">Quick guide &amp; shortcuts</button>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="create" class="on" data-hint="Create palette (Ctrl+1): planes, terrains, stones and primitives">Create</button>
+        <button data-tab="edit" data-hint="Edit palette (Ctrl+2): materials, terrain editor, transforms">Edit</button>
+        <button data-tab="sky" data-hint="Sky &amp; Fog palette (Ctrl+3): sun, haze, fog and clouds">Sky &amp; Fog</button>
+      </nav>
+    </header>
+    <div class="palette" id="palette"></div>
+
+    <div class="viewport" id="viewport">
+      <canvas id="view"></canvas>
+      <div class="view-badge" id="viewBadge">Camera View</div>
+      <div class="render-hud" id="renderHud" hidden>
+        <span id="hudPass">16×16</span><span class="hud-sep">·</span><span id="hudPct">0%</span><span class="hud-sep">·</span><span class="hud-hint">click to return to wireframe</span>
+      </div>
+      <div class="boot" id="boot"><div class="boot-in"><div class="brand-mark big">Bryce</div><div>Compiling the ray tracer…</div></div></div>
+    </div>
+
+    <footer class="status">
+      <div class="hint" id="hint">Welcome. Pick something from the Create palette, then press Render.</div>
+      <div class="selection" id="selection"></div>
+    </footer>
+  </section>
+
+  <aside class="right" id="attrs"></aside>
+</div>
+
+<!-- Materials Lab -->
+<div class="modal" id="matLab" hidden>
+  <div class="modal-card lab">
+    <header class="modal-head"><h2>Materials Lab</h2><span class="modal-sub" id="matTarget"></span><button class="x" data-close aria-label="Close">×</button></header>
+    <div class="lab-body">
+      <div class="lab-left">
+        <canvas id="matPreview" width="220" height="220"></canvas>
+        <div class="mat-name" id="matName"></div>
+        <div class="lab-params" id="matParams"></div>
+      </div>
+      <div class="lab-right">
+        <div class="seg cats" id="matCats"></div>
+        <div class="mat-grid" id="matGrid"></div>
+      </div>
+    </div>
+    <footer class="modal-foot"><button class="btn" data-cancel>Cancel</button><button class="btn primary" data-close>Done</button></footer>
+  </div>
+</div>
+
+<!-- Terrain Editor -->
+<div class="modal" id="terrLab" hidden>
+  <div class="modal-card terr">
+    <header class="modal-head"><h2>Terrain Editor</h2><span class="modal-sub" id="terrTarget"></span><button class="x" data-close aria-label="Close">×</button></header>
+    <div class="terr-body">
+      <div class="terr-left">
+        <div class="terr-canvas-wrap"><canvas id="terrCanvas" width="400" height="400" data-hint="Paint on the height map with the brush"></canvas></div>
+        <div class="seg" id="terrView">
+          <button data-tv="shade" class="on">Relief</button><button data-tv="gray">Height map</button><button data-tv="color">Elevation</button>
+        </div>
+      </div>
+      <div class="terr-right">
+        <div class="block-title">Generate</div>
+        <div class="btn-grid" id="terrGen"></div>
+        <div class="block-title">Sculpt</div>
+        <div class="btn-grid" id="terrOps"></div>
+        <div class="block-title">Brush</div>
+        <div class="seg" id="brushMode">
+          <button data-bm="raise" class="on">Raise</button><button data-bm="lower">Lower</button><button data-bm="smooth">Smooth</button><button data-bm="flatten">Flatten</button>
+        </div>
+        <div class="scrub-host" id="brushHost"></div>
+        <div class="block-title">Grid</div>
+        <div class="seg" id="terrRes"><button data-res="64">64</button><button data-res="128" class="on">128</button><button data-res="256">256</button></div>
+      </div>
+    </div>
+    <footer class="modal-foot"><button class="btn" data-cancel>Cancel</button><button class="btn primary" data-close>Done</button></footer>
+  </div>
+</div>
+
+<!-- Help -->
+<div class="modal" id="help" hidden>
+  <div class="modal-card help">
+    <header class="modal-head"><h2>Quick guide</h2><button class="x" data-close aria-label="Close">×</button></header>
+    <div class="help-body">
+      <p>Bryce Web is a homage to the 1994 landscape program. Build in wireframe, watch the Nano-Preview, then press <b>Render</b> to ray trace the full image in progressively finer passes.</p>
+      <ul>
+        <li><b>Create</b> — click an icon to drop a water, cloud or ground plane, a fractal terrain, a stone, or a primitive into the world.</li>
+        <li><b>Edit</b> — open the Materials Lab or the Terrain Editor, or switch the gizmo between move, rotate and resize.</li>
+        <li><b>Sky &amp; Fog</b> — drag the sun on the trackball, scrub the thumbnails for haze, fog and clouds, or pick a sky from memory.</li>
+      </ul>
+      <table class="keys">
+        <tr><td>Drag empty space</td><td>Orbit camera</td></tr>
+        <tr><td>Right-drag / Shift-drag</td><td>Pan</td></tr>
+        <tr><td>Wheel</td><td>Zoom</td></tr>
+        <tr><td>W / E / R</td><td>Move / Rotate / Resize</td></tr>
+        <tr><td>Ctrl R or Enter</td><td>Render</td></tr>
+        <tr><td>Ctrl D · Del</td><td>Duplicate · Delete</td></tr>
+        <tr><td>Ctrl Z · Ctrl Shift Z</td><td>Undo · Redo</td></tr>
+        <tr><td>Ctrl 1 / 2 / 3</td><td>Create / Edit / Sky &amp; Fog</td></tr>
+      </table>
+      <p class="fine">Bryce was created by Kai Krause and Eric Wenger and published by HSC Software / MetaTools. This is an independent fan recreation.</p>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept=".json,application/json" hidden />
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
